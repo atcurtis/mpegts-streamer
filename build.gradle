@@ -16,14 +16,14 @@ configurations {
 
 dependencies {
 
-	compile group: 'org.jcodec',          name: 'jcodec',                           version: '0.1.6-3'
+	implementation group: 'org.jcodec',          name: 'jcodec',                           version: '0.2.5'
 
-	compile group: 'ch.qos.logback',      name: 'logback-classic',                  version: '1.1.2'
-	compile group: 'org.slf4j',           name: 'jcl-over-slf4j',                   version: '1.7.7'
-	compile group: 'org.slf4j',           name: 'jul-to-slf4j',  		            version: '1.7.7'
-	compile group: 'org.slf4j',           name: 'log4j-over-slf4j',                 version: '1.7.7'
+	implementation group: 'ch.qos.logback',      name: 'logback-classic',                  version: '1.5.13'
+	implementation group: 'org.slf4j',           name: 'jcl-over-slf4j',                   version: '2.0.15'
+	implementation group: 'org.slf4j',           name: 'jul-to-slf4j',  		            version: '2.0.15'
+	implementation group: 'org.slf4j',           name: 'log4j-over-slf4j',                 version: '2.0.15'
 
-	compile group: 'com.google.guava', name: 'guava', version: '17.0'
+	implementation group: 'com.google.guava', name: 'guava', version: '32.0.1-android'
 
-	testCompile group: 'junit', name: 'junit', version: '4.11'
+	testImplementation group: 'junit', name: 'junit', version: '4.13.1'
 }
