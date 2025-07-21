@@ -48,11 +48,15 @@ public class Streamer {
 		}
 		log.info("Done PreBuffering");
 
-		bufferingThread = new Thread(this::fillBuffer, "buffering");
-		bufferingThread.start();
+		bufferingThread = Thread.ofVirtual().name("buffering").start(this::fillBuffer);
+		//bufferingThread = Thread.startVirtualThread(this::fillBuffer);
+		//bufferingThread = new Thread(this::fillBuffer, "buffering");
+		//bufferingThread.start();
 
-		streamingThread = new Thread(this::internalStream, "streaming");
-		streamingThread.start();
+		//streamingThread = new Thread(this::internalStream, "streaming");
+		//streamingThread = Thread.startVirtualThread(this::internalStream);
+		streamingThread = Thread.ofVirtual().name("streaming").start(this::internalStream);
+		//streamingThread.start();
 	}
 
 	public void stop() {
@@ -62,11 +66,16 @@ public class Streamer {
 			bufferingThread.join();
 			streamingThread.join();
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			log.error("stop exception", e);
 		}
 		buffer = null;
 		bufferingThread = streamingThread = null;
 	}
+
+	public void join() throws InterruptedException {
+		streamingThread.join();
+	}
+
 
 	private void internalStream() {
 		boolean resetState = false;
@@ -181,7 +190,8 @@ public class Streamer {
 									sleepNanosPrevious = ((pcrValue - lastPcrValue) / 27 * 1000) - (pcrTime - lastPcrTime);
 								}
 							}
-//								System.out.println("pcrValue=" + pcrValue + ", lastPcrValue=" + lastPcrValue + ", sleepNanosPrevious=" + sleepNanosPrevious + ", sleepNanosOrig=" + sleepNanosOrig);
+							log.atDebug().log("pcrValue={}, lastPcrValue={}, sleepNanosPrevious={}, sleepNanosOrig={}",
+									pcrValue, lastPcrValue, sleepNanosPrevious, sleepNanosOrig);
 
 							// Set sleep time based on PCR if possible
 							if (sleepNanosPrevious != null) {

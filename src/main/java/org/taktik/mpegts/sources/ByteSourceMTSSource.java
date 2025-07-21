@@ -8,7 +8,7 @@ import com.google.common.io.ByteSource;
 import org.taktik.mpegts.Constants;
 import org.taktik.mpegts.MTSPacket;
 
-public class ByteSourceMTSSource extends AbstractMTSSource implements ResettableMTSSource {
+public class ByteSourceMTSSource extends AbstractBlockingMTSSource implements ResettableMTSSource {
 
 	private ByteSource byteSource;
 
@@ -30,7 +30,7 @@ public class ByteSourceMTSSource extends AbstractMTSSource implements Resettable
 	}
 
 	@Override
-	protected MTSPacket nextPacketInternal() throws Exception {
+	protected MTSPacket nextPacketBlocking() throws Exception {
 		if (stream == null) {
 			stream = byteSource.openBufferedStream();
 		}

@@ -8,16 +8,16 @@ import com.google.common.base.Preconditions;
 import org.taktik.mpegts.Constants;
 import org.taktik.mpegts.MTSPacket;
 
-public class InputStreamMTSSource extends AbstractMTSSource {
+public class InputStreamMTSSource extends AbstractBlockingMTSSource {
 
 	private InputStream inputStream;
 
-	private InputStreamMTSSource(InputStream inputStream) throws IOException {
+	protected InputStreamMTSSource(InputStream inputStream) throws IOException {
 		this.inputStream = inputStream;
 	}
 
 	@Override
-	protected MTSPacket nextPacketInternal() throws IOException {
+	protected MTSPacket nextPacketBlocking() throws IOException {
 		byte[] barray = new byte[Constants.MPEGTS_PACKET_SIZE];
 		if (inputStream.read(barray) != Constants.MPEGTS_PACKET_SIZE) {
 			inputStream.close();

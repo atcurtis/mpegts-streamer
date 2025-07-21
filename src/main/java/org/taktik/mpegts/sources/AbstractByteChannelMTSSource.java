@@ -10,7 +10,7 @@ import org.taktik.ioutils.NIOUtils;
 import org.taktik.mpegts.Constants;
 import org.taktik.mpegts.MTSPacket;
 
-public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extends AbstractMTSSource {
+public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extends AbstractBlockingMTSSource {
 	static final Logger log = LoggerFactory.getLogger("source");
 
 	private static final int BUFFER_SIZE = Constants.MPEGTS_PACKET_SIZE * 1000;
@@ -24,10 +24,17 @@ public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extend
 		fillBuffer();
 	}
 
-	protected void fillBuffer() throws IOException {
+	protected boolean fillBuffer() throws IOException {
 		buffer = ByteBuffer.allocate(BUFFER_SIZE);
-		NIOUtils.read(byteChannel, buffer);
+		return fillBuffer(buffer);
+	}
+
+	protected boolean fillBuffer(ByteBuffer buffer) throws IOException {
+		if (NIOUtils.read(byteChannel, buffer) <= 0) {
+			return false;
+		}
 		buffer.flip();
+		return true;
 	}
 
 	protected boolean lastBuffer() {
@@ -35,7 +42,7 @@ public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extend
 	}
 
 	@Override
-	protected MTSPacket nextPacketInternal() throws IOException {
+	protected MTSPacket nextPacketBlocking() throws IOException {
 		ByteBuffer packetBuffer = null;
 		while (true) {
 			boolean foundFirstMarker = false;
@@ -45,11 +52,9 @@ public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extend
 					if (lastBuffer()) {
 						return null;
 					}
-					buffer = ByteBuffer.allocate(BUFFER_SIZE);
-					if (NIOUtils.read(byteChannel, buffer) <= 0) {
+					if (!fillBuffer()) {
 						return null;
 					}
-					buffer.flip();
 				}
 				if ((buffer.get(buffer.position()) & 0xff) == Constants.TS_MARKER) {
 					foundFirstMarker = true;
@@ -77,10 +82,9 @@ public abstract class AbstractByteChannelMTSSource<T extends ByteChannel> extend
 				ByteBuffer newBuffer = ByteBuffer.allocate(BUFFER_SIZE);
 				newBuffer.put(buffer);
 				buffer = newBuffer;
-				if (NIOUtils.read(byteChannel, buffer) <= 0) {
+				if (!fillBuffer(buffer)) {
 					return null;
 				}
-				buffer.flip();
 				if (buffer.remaining() >= Constants.MPEGTS_PACKET_SIZE) {
 					if ((buffer.remaining() == Constants.MPEGTS_PACKET_SIZE) ||
 							(buffer.get(buffer.position() + Constants.MPEGTS_PACKET_SIZE) & 0xff) == Constants.TS_MARKER) {

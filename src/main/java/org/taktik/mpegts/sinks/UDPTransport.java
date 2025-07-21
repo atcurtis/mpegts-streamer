@@ -5,14 +5,21 @@ import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.taktik.mpegts.MTSPacket;
 
 public class UDPTransport implements MTSSink {
 
 	private final InetSocketAddress inetSocketAddress;
 	private final MulticastSocket multicastSocket;
+	private CompletableFuture<Void> queue = CompletableFuture.completedFuture(null);
+	private final Thread.Builder builder = Thread.ofVirtual().name("HTTPMTSSource");
+
 
 
 	private UDPTransport(String address, int port, int ttl, int soTimeout) throws IOException {
@@ -28,11 +35,23 @@ public class UDPTransport implements MTSSink {
 	}
 
 	@Override
-	public void send(MTSPacket packet) throws IOException {
+	public void send(MTSPacket packet) throws Exception {
 		ByteBuffer buffer = packet.getBuffer();
 		Preconditions.checkArgument(buffer.hasArray());
 		DatagramPacket datagramPacket = new DatagramPacket(buffer.array(), buffer.arrayOffset(), buffer.limit(), inetSocketAddress);
-		multicastSocket.send(datagramPacket);
+		CompletableFuture<Void> oldFuture = queue;
+		queue = queue.thenRunAsync(() -> {
+            try {
+                multicastSocket.send(datagramPacket);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, builder::start);
+		if (queue.isDone()) {
+			queue.get();
+		} else {
+			oldFuture.join();
+		}
 	}
 
 	public void close() {

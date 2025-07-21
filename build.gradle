@@ -1,7 +1,10 @@
-apply plugin: 'java'
+plugins {
+	id 'java-library'
+	id 'maven-publish'
+}
 
-version = '0.1'
-sourceCompatibility = 1.8
+group 'org.xiphis'
+version = '0.2-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -18,12 +21,17 @@ dependencies {
 
 	implementation group: 'org.jcodec',          name: 'jcodec',                           version: '0.2.5'
 
-	implementation group: 'ch.qos.logback',      name: 'logback-classic',                  version: '1.5.13'
-	implementation group: 'org.slf4j',           name: 'jcl-over-slf4j',                   version: '2.0.15'
-	implementation group: 'org.slf4j',           name: 'jul-to-slf4j',  		            version: '2.0.15'
-	implementation group: 'org.slf4j',           name: 'log4j-over-slf4j',                 version: '2.0.15'
+	implementation group: 'org.slf4j',           name: 'slf4j-api',                        version: '2.0.15'
+	testImplementation group: 'ch.qos.logback',      name: 'logback-classic',                  version: '1.5.13'
+	testImplementation group: 'org.slf4j',           name: 'jcl-over-slf4j',                   version: '2.0.15'
+	testImplementation group: 'org.slf4j',           name: 'jul-to-slf4j',  		           version: '2.0.15'
+	testImplementation group: 'org.slf4j',           name: 'log4j-over-slf4j',                 version: '2.0.15'
 
 	implementation group: 'com.google.guava', name: 'guava', version: '32.0.1-android'
 
 	testImplementation group: 'junit', name: 'junit', version: '4.13.1'
+}
+
+test {
+	useJUnit()
 }

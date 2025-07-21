@@ -1,5 +1,6 @@
 package org.taktik.mpegts.sinks;
 
+import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
 import org.taktik.mpegts.MTSPacket;
@@ -15,6 +16,10 @@ public class ByteChannelSink implements MTSSink {
 	@Override
 	public void send(MTSPacket packet) throws Exception {
 		byteChannel.write(packet.getBuffer());
+	}
+
+	public void close() throws IOException {
+		byteChannel.close();
 	}
 
 	public static ByteChannelSinkBuilder builder() {

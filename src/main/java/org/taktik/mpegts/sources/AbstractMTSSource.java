@@ -30,7 +30,8 @@ public abstract class AbstractMTSSource implements MTSSource {
 	protected abstract void closeInternal() throws Exception;
 
 
-	protected void finalize() throws Exception {
+	@SuppressWarnings("removal")
+    protected void finalize() throws Exception {
 		if (!closed) {
 			close();
 		}
