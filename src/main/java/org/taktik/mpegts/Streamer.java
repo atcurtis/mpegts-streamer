@@ -1,10 +1,13 @@
 package org.taktik.mpegts;
 
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +19,7 @@ public class Streamer {
 
 	private MTSSource source;
 	private MTSSink sink;
+	private final List<ProgramChangeListener> programChangeListenerList;
 
 	private ArrayBlockingQueue<MTSPacket> buffer;
 	private int bufferSize;
@@ -28,10 +32,11 @@ public class Streamer {
 	private Thread bufferingThread;
 	private Thread streamingThread;
 
-	private Streamer(MTSSource source, MTSSink sink, int bufferSize) {
+	private Streamer(MTSSource source, MTSSink sink, int bufferSize, List<ProgramChangeListener> programChangeListenerList) {
 		this.source = source;
 		this.sink = sink;
 		this.bufferSize = bufferSize;
+		this.programChangeListenerList = programChangeListenerList;
 	}
 
 	public void stream() {
@@ -49,14 +54,8 @@ public class Streamer {
 		log.info("Done PreBuffering");
 
 		bufferingThread = Thread.ofVirtual().name("buffering").start(this::fillBuffer);
-		//bufferingThread = Thread.startVirtualThread(this::fillBuffer);
-		//bufferingThread = new Thread(this::fillBuffer, "buffering");
-		//bufferingThread.start();
 
-		//streamingThread = new Thread(this::internalStream, "streaming");
-		//streamingThread = Thread.startVirtualThread(this::internalStream);
 		streamingThread = Thread.ofVirtual().name("streaming").start(this::internalStream);
-		//streamingThread.start();
 	}
 
 	public void stop() {
@@ -118,6 +117,7 @@ public class Streamer {
 			}
 
 			int pid = packet.getPid();
+			boolean changed = false;
 
 			if (pid == 0 && packet.isPayloadUnitStartIndicator()) {
 				ByteBuffer payload = packet.getPayload();
@@ -125,24 +125,35 @@ public class Streamer {
 				int pointer = payload.get() & 0xff;
 				payload.position(payload.position() + pointer);
 				patSection = PATSection.parse(payload);
-				for (Integer pmtPid : pmtSection.keySet()) {
-					if (!patSection.getPrograms().values().contains(pmtPid)) {
-						pmtSection.remove(pmtPid);
+				if (patSection != null) {
+					for (Integer pmtPid : pmtSection.keySet()) {
+						if (!patSection.getPrograms().containsValue(pmtPid)) {
+							pmtSection.remove(pmtPid);
+							changed = true;
+						}
 					}
 				}
+				notifyPatSection(packet, patSection);
 			}
 
 			if (pid != 0 && patSection!=null) {
-				if (patSection.getPrograms().values().contains(pid)) {
+				if (patSection.getPrograms().containsValue(pid)) {
 					if (packet.isPayloadUnitStartIndicator()) {
 						ByteBuffer payload = packet.getPayload();
 						payload.rewind();
 						int pointer = payload.get() & 0xff;
 						payload.position(payload.position() + pointer);
-						pmtSection.put(pid, PMTSection.parse(payload));
+						PMTSection pmtSection = PMTSection.parse(payload);
+						this.pmtSection.put(pid, pmtSection);
+						changed = true;
+						notifyPmtSection(packet, pmtSection);
 					}
 				}
 
+
+			}
+			if (changed) {
+				notifyProgramChangeListener(patSection, pmtSection);
 			}
 
 			// Check PID matches PCR PID
@@ -220,7 +231,9 @@ public class Streamer {
 
 			// Sleep if needed
 			if (sleepNanos > 0) {
-				log.trace("Sleeping " + sleepNanos / 1000000 + " millis, " + sleepNanos % 1000000 + " nanos");
+				log.atTrace().setMessage("Sleeping {} millis, {} nanos")
+								.addArgument(sleepNanos / 1000000).addArgument(sleepNanos % 1000000)
+								.log();
 				try {
 					Thread.sleep(sleepNanos / 1000000, (int) (sleepNanos % 1000000));
 				} catch (InterruptedException e) {
@@ -240,6 +253,14 @@ public class Streamer {
 			packetCount++;
 		}
 		log.info("Sent {} MPEG-TS packets", packetCount);
+	}
+
+	private void notifyProgramChangeListener(PATSection patSection, TreeMap<Integer, PMTSection> pmtSection) {
+		if (!programChangeListenerList.isEmpty()) {
+			for (ProgramChangeListener listener : programChangeListenerList) {
+				listener.notify(patSection, pmtSection);
+			}
+		}
 	}
 
 	private void preBuffer() throws Exception {
@@ -288,6 +309,7 @@ public class Streamer {
 		private MTSSink sink;
 		private MTSSource source;
 		private int bufferSize = 1000;
+		private List<ProgramChangeListener> programChangeListenerList = Lists.newCopyOnWriteArrayList();
 
 		public StreamerBuilder setSink(MTSSink sink) {
 			this.sink = sink;
@@ -304,10 +326,15 @@ public class Streamer {
 			return this;
 		}
 
+		public StreamerBuilder addListener(ProgramChangeListener listener) {
+			programChangeListenerList.add(Objects.requireNonNull(listener));
+			return this;
+		}
+
 		public Streamer build() {
 			Preconditions.checkNotNull(sink);
 			Preconditions.checkNotNull(source);
-			return new Streamer(source, sink, bufferSize);
+			return new Streamer(source, sink, bufferSize, programChangeListenerList);
 		}
 	}
 }

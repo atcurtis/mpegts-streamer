@@ -44,6 +44,6 @@ public class PATSection extends PSISection {
 				programs.put(programNum, pid);
 		}
 
-		return new PATSection(psi, networkPids.toArray(new Integer[networkPids.size()]), programs);
+		return new PATSection(psi, networkPids.toArray(new Integer[0]), programs);
 	}
 }
