@@ -17,7 +17,8 @@ public class ProcessMTSSource extends AbstractMTSSource {
         process = processBuilder
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectError(ProcessBuilder.Redirect.PIPE)
-                .start();process.info()
+                .start();
+        //process.info()
         LOGGER.atInfo().setMessage("Starting process PID={}").addArgument(process.pid()).log();
         source = InputStreamMTSSource.builder().setInputStream(process.getInputStream()).build();
         Thread.ofVirtual().name("stderr").start(this::stderrHandler);
